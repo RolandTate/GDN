@@ -92,7 +92,11 @@ class GraphLayer(MessagePassing):
         x_j = x_j.view(-1, self.heads, self.out_channels)
         # x_j.shape: torch.Size([69120, 1, 64])
 
+        # edge_index_i.shape: torch.Size([69120])
+        # size_i: 3456
+        # embedding.shape: torch.Size([3456, 64])
         if embedding is not None:
+            # embedding_i.shape, embedding_j.shape: (torch.Size([69120, 64]), torch.Size([69120, 64]))
             embedding_i, embedding_j = embedding[edge_index_i], embedding[edges[0]]
             embedding_i = embedding_i.unsqueeze(1).repeat(1,self.heads,1)
             embedding_j = embedding_j.unsqueeze(1).repeat(1,self.heads,1)
