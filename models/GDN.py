@@ -17,9 +17,11 @@ def get_batch_edge_index(org_edge_index, batch_num, node_num):
     edge_index = org_edge_index.clone().detach()
     edge_num = org_edge_index.shape[1]
     batch_edge_index = edge_index.repeat(1,batch_num).contiguous()
+    # batch_edge_index.shape: torch.Size([2, edge_num*batch_num])
 
     for i in range(batch_num):
         batch_edge_index[:, i*edge_num:(i+1)*edge_num] += i*node_num
+        # 这是要干嘛？第i个batch的值全是i*node_num？
 
     return batch_edge_index.long()
 
@@ -73,7 +75,7 @@ class GNNLayer(nn.Module):
         out, (new_edge_index, att_weight) = self.gnn(x, edge_index, embedding, return_attention_weights=True)
         self.att_weight_1 = att_weight
         self.edge_index_1 = new_edge_index
-  
+
         out = self.bn(out)
         
         return self.relu(out)
@@ -91,12 +93,13 @@ class GDN(nn.Module):
         edge_index = edge_index_sets[0]
 
 
-        embed_dim = dim
-        self.embedding = nn.Embedding(node_num, embed_dim)
-        self.bn_outlayer_in = nn.BatchNorm1d(embed_dim)
+        embed_dim = dim  # 64
+        self.embedding = nn.Embedding(node_num, embed_dim)  # 生成对应传感器n个的64维嵌入向量
+        self.bn_outlayer_in = nn.BatchNorm1d(embed_dim)  # 归一化层
 
 
-        edge_set_num = len(edge_index_sets)
+        edge_set_num = len(edge_index_sets)  # 获取图的数量
+        # 根据输入图的数量生成对应个数的GNN层
         self.gnn_layers = nn.ModuleList([
             GNNLayer(input_dim, dim, inter_dim=dim+embed_dim, heads=1) for i in range(edge_set_num)
         ])
@@ -126,42 +129,44 @@ class GDN(nn.Module):
 
         device = data.device
 
-        batch_num, node_num, all_feature = x.shape
-        x = x.view(-1, all_feature).contiguous()
+        batch_num, node_num, all_feature = x.shape  # batch_num, node_num, all_feature :(128, 27, 15)
+        x = x.view(-1, all_feature).contiguous()  # (128x27, 15)
 
 
         gcn_outs = []
-        for i, edge_index in enumerate(edge_index_sets):
-            edge_num = edge_index.shape[1]
-            cache_edge_index = self.cache_edge_index_sets[i]
+        for i, edge_index in enumerate(edge_index_sets):  # 遍历列表里的图
+            # edge_num = edge_index.shape[1]  # num of edge, edge_index.shape:(2,27x26)
+            # cache_edge_index = self.cache_edge_index_sets[i]
 
-            if cache_edge_index is None or cache_edge_index.shape[1] != edge_num*batch_num:
-                self.cache_edge_index_sets[i] = get_batch_edge_index(edge_index, batch_num, node_num).to(device)
-            
-            batch_edge_index = self.cache_edge_index_sets[i]
-            
+            # if cache_edge_index is None or cache_edge_index.shape[1] != edge_num*batch_num:
+            #     self.cache_edge_index_sets[i] = get_batch_edge_index(edge_index, batch_num, node_num).to(device)
+            #
+            # batch_edge_index = self.cache_edge_index_sets[i]
+
             all_embeddings = self.embedding(torch.arange(node_num).to(device))
 
-            weights_arr = all_embeddings.detach().clone()
-            all_embeddings = all_embeddings.repeat(batch_num, 1)
+            weights_arr = all_embeddings.detach().clone()  # (27,64)
+            all_embeddings = all_embeddings.repeat(batch_num, 1)  # (27x128, 64)
 
-            weights = weights_arr.view(node_num, -1)
+            weights = weights_arr.view(node_num, -1)  # 毫无意义的操作，我真服了
 
-            cos_ji_mat = torch.matmul(weights, weights.T)
-            normed_mat = torch.matmul(weights.norm(dim=-1).view(-1,1), weights.norm(dim=-1).view(1,-1))
-            cos_ji_mat = cos_ji_mat / normed_mat
+            cos_ji_mat = torch.matmul(weights, weights.T)  # (27,27)
+            normed_mat = torch.matmul(weights.norm(dim=-1).view(-1,1), weights.norm(dim=-1).view(1,-1))  # (27,27)
+            cos_ji_mat = cos_ji_mat / normed_mat  # (27,27)
 
-            dim = weights.shape[-1]
-            topk_num = self.topk
+            # dim = weights.shape[-1] 用不上的代码还留着干嘛
+            topk_num = self.topk  #(20)
 
-            topk_indices_ji = torch.topk(cos_ji_mat, topk_num, dim=-1)[1]
+            topk_indices_ji = torch.topk(cos_ji_mat, topk_num, dim=-1)[1]  # 得到前20个大的index, (27,20)
 
             self.learned_graph = topk_indices_ji
 
+            # arange返回([27]), .T操作毫无意义，最后shape为(1,27*20)
             gated_i = torch.arange(0, node_num).T.unsqueeze(1).repeat(1, topk_num).flatten().to(device).unsqueeze(0)
-            gated_j = topk_indices_ji.flatten().unsqueeze(0)
-            gated_edge_index = torch.cat((gated_j, gated_i), dim=0)
+            gated_j = topk_indices_ji.flatten().unsqueeze(0)  # (1,27*20)
+            gated_edge_index = torch.cat((gated_j, gated_i), dim=0)  #(2,540)
 
+            # batch_gated_edge_index.shape: torch.Size([2, 69120 = 540*batch_num(128)])
             batch_gated_edge_index = get_batch_edge_index(gated_edge_index, batch_num, node_num).to(device)
             gcn_out = self.gnn_layers[i](x, batch_gated_edge_index, node_num=node_num*batch_num, embedding=all_embeddings)
 

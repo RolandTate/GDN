@@ -52,11 +52,13 @@ class Main():
         feature_map = get_feature_map(dataset)
         fc_struc = get_fc_graph_struc(dataset)
 
+        # 这样的方式也多少有点冗余
         set_device(env_config['device'])
         self.device = get_device()
 
         fc_edge_index = build_loc_net(fc_struc, list(train.columns), feature_map=feature_map)
         fc_edge_index = torch.tensor(fc_edge_index, dtype = torch.long)
+        print(f'len(fc_edge_index): {len(fc_edge_index)}')
 
         self.feature_map = feature_map
 
@@ -72,7 +74,7 @@ class Main():
         train_dataset = TimeDataset(train_dataset_indata, fc_edge_index, mode='train', config=cfg)
         test_dataset = TimeDataset(test_dataset_indata, fc_edge_index, mode='test', config=cfg)
 
-
+        # batch = 128
         train_dataloader, val_dataloader = self.get_loaders(train_dataset, train_config['seed'], train_config['batch'], val_ratio = train_config['val_ratio'])
 
         self.train_dataset = train_dataset
@@ -89,11 +91,11 @@ class Main():
         edge_index_sets.append(fc_edge_index)
 
         self.model = GDN(edge_index_sets, len(feature_map), 
-                dim=train_config['dim'], 
-                input_dim=train_config['slide_win'],
-                out_layer_num=train_config['out_layer_num'],
-                out_layer_inter_dim=train_config['out_layer_inter_dim'],
-                topk=train_config['topk']
+                dim=train_config['dim'],   # 64
+                input_dim=train_config['slide_win'],  # 15
+                out_layer_num=train_config['out_layer_num'],  # 1
+                out_layer_inter_dim=train_config['out_layer_inter_dim'],  # 256
+                topk=train_config['topk']  # 20
             ).to(self.device)
 
 
@@ -245,7 +247,8 @@ if __name__ == "__main__":
 
     env_config={
         'save_path': args.save_path_pattern,
-        'dataset': args.dataset,
+        # 'dataset': args.dataset,
+        'dataset': 'msl',
         'report': args.report,
         'device': args.device,
         'load_model_path': args.load_model_path

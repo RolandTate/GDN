@@ -20,8 +20,9 @@ class TimeDataset(Dataset):
 
         data = x_data
 
-        # to tensor
+        # to tensor data.shape(num of features,length of features)
         data = torch.tensor(data).double()
+        print(f'data.shape: {data.shape}')
         labels = torch.tensor(labels).double()
 
         self.x, self.y, self.labels = self.process(data, labels)
@@ -34,6 +35,7 @@ class TimeDataset(Dataset):
         x_arr, y_arr = [], []
         labels_arr = []
 
+        # 这里直接赋值就好，没有必要这样取信息
         slide_win, slide_stride = [self.config[k] for k
             in ['slide_win', 'slide_stride']
         ]
@@ -42,20 +44,25 @@ class TimeDataset(Dataset):
         node_num, total_time_len = data.shape
 
         rang = range(slide_win, total_time_len, slide_stride) if is_train else range(slide_win, total_time_len)
+        print(f'rang: {rang}')
         
         for i in rang:
 
             ft = data[:, i-slide_win:i]
+            # ft.shape: torch.Size([27, 15])
             tar = data[:, i]
+            # tar.shape: torch.Size([27])
 
             x_arr.append(ft)
             y_arr.append(tar)
 
             labels_arr.append(labels[i])
 
-
+        # contiguous改变张量在内存里的存储方式，让他变为更改后的形状的连续存储
         x = torch.stack(x_arr).contiguous()
+        # train:([310, 27, 15]), test:([2034, 27, 15])
         y = torch.stack(y_arr).contiguous()
+        # train:([310, 27]), test:([2034, 27])
 
         labels = torch.Tensor(labels_arr).contiguous()
         

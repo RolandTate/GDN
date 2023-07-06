@@ -90,9 +90,11 @@ def build_loc_net(struc, all_features, feature_map=[]):
         []
     ]
     for node_name, node_list in struc.items():
+        # 因为数据预处理的时候把train里面的attack的数据去掉了
         if node_name not in all_features:
             continue
 
+        # 毫无意义，基本不会执行
         if node_name not in index_feature_map:
             index_feature_map.append(node_name)
         
@@ -101,6 +103,7 @@ def build_loc_net(struc, all_features, feature_map=[]):
             if child not in all_features:
                 continue
 
+            # 毫无意义，本来child都是根据index_feature_map构建出来的
             if child not in index_feature_map:
                 print(f'error: {child} not in index_feature_map')
                 # index_feature_map.append(child)
@@ -108,9 +111,10 @@ def build_loc_net(struc, all_features, feature_map=[]):
             c_index = index_feature_map.index(child)
             # edge_indexes[0].append(p_index)
             # edge_indexes[1].append(c_index)
+            # 构建的是起终点的边信息, 27x26=702，两个都是这个长度
             edge_indexes[0].append(c_index)
             edge_indexes[1].append(p_index)
-        
 
-    
+
+
     return edge_indexes

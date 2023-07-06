@@ -13,18 +13,18 @@ class GraphLayer(MessagePassing):
                  negative_slope=0.2, dropout=0, bias=True, inter_dim=-1,**kwargs):
         super(GraphLayer, self).__init__(aggr='add', **kwargs)
 
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.heads = heads
+        self.in_channels = in_channels  # 15
+        self.out_channels = out_channels  # 64
+        self.heads = heads  # 1
         self.concat = concat
-        self.negative_slope = negative_slope
+        self.negative_slope = negative_slope  # 0.2
         self.dropout = dropout
 
         self.__alpha__ = None
 
         self.lin = Linear(in_channels, heads * out_channels, bias=False)
 
-        self.att_i = Parameter(torch.Tensor(1, heads, out_channels))
+        self.att_i = Parameter(torch.Tensor(1, heads, out_channels))  # (1,1,64)
         self.att_j = Parameter(torch.Tensor(1, heads, out_channels))
         self.att_em_i = Parameter(torch.Tensor(1, heads, out_channels))
         self.att_em_j = Parameter(torch.Tensor(1, heads, out_channels))
@@ -54,13 +54,15 @@ class GraphLayer(MessagePassing):
         """"""
         if torch.is_tensor(x):
             x = self.lin(x)
+            # x.shape: torch.Size([3456=(node_num*batch_num), 64])
             x = (x, x)
         else:
             x = (self.lin(x[0]), self.lin(x[1]))
 
-        edge_index, _ = remove_self_loops(edge_index)
+        edge_index, _ = remove_self_loops(edge_index)  # 删除自环
         edge_index, _ = add_self_loops(edge_index,
                                        num_nodes=x[1].size(self.node_dim))
+        # edge_index.shape: torch.Size([2, 69120=node_num*topk*batch_num])
 
         out = self.propagate(edge_index, x=x, embedding=embedding, edges=edge_index,
                              return_attention_weights=return_attention_weights)
@@ -83,9 +85,12 @@ class GraphLayer(MessagePassing):
                 embedding,
                 edges,
                 return_attention_weights):
-
+        # x_i.shape: torch.Size([69120, 64])
         x_i = x_i.view(-1, self.heads, self.out_channels)
+        # x_i.shape: torch.Size([69120, 1, 64])
+        # x_j.shape: torch.Size([69120, 64])
         x_j = x_j.view(-1, self.heads, self.out_channels)
+        # x_j.shape: torch.Size([69120, 1, 64])
 
         if embedding is not None:
             embedding_i, embedding_j = embedding[edge_index_i], embedding[edges[0]]
@@ -107,7 +112,7 @@ class GraphLayer(MessagePassing):
 
 
         alpha = F.leaky_relu(alpha, self.negative_slope)
-        alpha = softmax(alpha, edge_index_i, size_i)
+        alpha = softmax(alpha, edge_index_i, num_nodes=size_i)
 
         if return_attention_weights:
             self.__alpha__ = alpha
