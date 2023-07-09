@@ -58,7 +58,7 @@ class Main():
 
         fc_edge_index = build_loc_net(fc_struc, list(train.columns), feature_map=feature_map)
         fc_edge_index = torch.tensor(fc_edge_index, dtype = torch.long)
-        print(f'len(fc_edge_index): {len(fc_edge_index)}')
+        # print(f'len(fc_edge_index): {len(fc_edge_index)}')
 
         self.feature_map = feature_map
 
@@ -182,7 +182,7 @@ class Main():
         
         if self.datestr is None:
             now = datetime.now()
-            self.datestr = now.strftime('%m|%d-%H:%M:%S')
+            self.datestr = now.strftime('%m-%d-%H_%M_%S')
         datestr = self.datestr          
 
         paths = [
@@ -205,7 +205,7 @@ if __name__ == "__main__":
     parser.add_argument('-slide_win', help='slide_win', type = int, default=15)
     parser.add_argument('-dim', help='dimension', type = int, default=64)
     parser.add_argument('-slide_stride', help='slide_stride', type = int, default=5)
-    parser.add_argument('-save_path_pattern', help='save path pattern', type = str, default='')
+    parser.add_argument('-save_path_pattern', help='save path pattern', type = str, default='models')
     parser.add_argument('-dataset', help='wadi / swat', type = str, default='wadi')
     parser.add_argument('-device', help='cuda / cpu', type = str, default='cuda')
     parser.add_argument('-random_seed', help='random seed', type = int, default=0)
@@ -248,7 +248,7 @@ if __name__ == "__main__":
     env_config={
         'save_path': args.save_path_pattern,
         # 'dataset': args.dataset,
-        'dataset': 'msl',
+        'dataset': 'swat',
         'report': args.report,
         'device': args.device,
         'load_model_path': args.load_model_path

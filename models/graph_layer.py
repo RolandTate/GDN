@@ -37,6 +37,7 @@ class GraphLayer(MessagePassing):
             self.register_parameter('bias', None)
 
         self.reset_parameters()
+        self.node_dim= 0
 
     def reset_parameters(self):
         glorot(self.lin.weight)
