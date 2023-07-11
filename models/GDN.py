@@ -129,20 +129,12 @@ class GDN(nn.Module):
 
         device = data.device
 
-        batch_num, node_num, all_feature = x.shape  # batch_num, node_num, all_feature :(128, 27, 15)
-        x = x.view(-1, all_feature).contiguous()  # (128x27, 15)
+        batch_num, node_num, all_feature = x.shape  # batch_num, node_num, all_feature :(128, 50, 15)
+        x = x.view(-1, all_feature).contiguous()  # (128x50, 15)
 
 
         gcn_outs = []
         for i, edge_index in enumerate(edge_index_sets):  # 遍历列表里的图
-            # edge_num = edge_index.shape[1]  # num of edge, edge_index.shape:(2,27x26)
-            # cache_edge_index = self.cache_edge_index_sets[i]
-
-            # if cache_edge_index is None or cache_edge_index.shape[1] != edge_num*batch_num:
-            #     self.cache_edge_index_sets[i] = get_batch_edge_index(edge_index, batch_num, node_num).to(device)
-            #
-            # batch_edge_index = self.cache_edge_index_sets[i]
-
             all_embeddings = self.embedding(torch.arange(node_num).to(device))
 
             weights_arr = all_embeddings.detach().clone()  # (27,64)
